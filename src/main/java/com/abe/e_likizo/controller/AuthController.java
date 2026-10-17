@@ -14,6 +14,7 @@ import com.abe.e_likizo.dto.ChangePasswordRequest;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin
 public class AuthController {
 
     private final AuthService authService;
