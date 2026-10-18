@@ -97,6 +97,10 @@ public class SecurityConfig {
                                 "/api/admin/**"
                         ).hasRole("ADMIN")
 
+                        // Employee endpoints: zinahitaji login
+                        .requestMatchers("/api/employees/**")
+                        .authenticated()
+
                         // Endpoints nyingine zinahitaji login
                         .anyRequest().authenticated()
                 )
