@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "leave_applications")
@@ -45,4 +47,18 @@ public class LeaveApplication extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private LeaveStatus status = LeaveStatus.PENDING;
+
+    // Mwanafamilia anayehusishwa na ombi la likizo.
+// Ni optional kwa aina nyingine za likizo.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "family_member_id")
+    private FamilyMember familyMember;
+
+    // Nyaraka zinazohusiana na ombi hili la likizo.
+    @OneToMany(
+            mappedBy = "leaveApplication",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<LeaveDocument> documents = new ArrayList<>();
 }

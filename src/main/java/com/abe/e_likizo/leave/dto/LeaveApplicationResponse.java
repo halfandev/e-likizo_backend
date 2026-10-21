@@ -13,5 +13,6 @@ public record LeaveApplicationResponse(
         LocalDate endDate,
         Integer requestedDays,
         String reason,
-        LeaveStatus status
+        LeaveStatus status,
+        Long familyMemberId
 ) {}

@@ -18,7 +18,9 @@ public record LeaveApplicationRequest(
         LocalDate endDate,
 
         @Size(max = 1000, message = "Reason cannot exceed 1000 characters")
-        String reason
+        String reason,
+
+        Long familyMemberId
 
 ) {
 }

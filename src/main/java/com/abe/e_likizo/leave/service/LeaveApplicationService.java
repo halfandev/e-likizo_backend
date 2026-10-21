@@ -5,15 +5,18 @@ import com.abe.e_likizo.employee.entity.Employee;
 import com.abe.e_likizo.employee.repository.EmployeeRepository;
 import com.abe.e_likizo.leave.dto.LeaveApplicationRequest;
 import com.abe.e_likizo.leave.dto.LeaveApplicationResponse;
+import com.abe.e_likizo.leave.entity.FamilyMember;
 import com.abe.e_likizo.leave.entity.LeaveApplication;
 import com.abe.e_likizo.leave.entity.LeaveType;
 import com.abe.e_likizo.leave.enums.LeaveStatus;
+import com.abe.e_likizo.leave.repository.FamilyMemberRepository;
 import com.abe.e_likizo.leave.repository.LeaveApplicationRepository;
 import com.abe.e_likizo.leave.repository.LeaveTypeRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,50 +28,54 @@ public class LeaveApplicationService {
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final EmployeeRepository employeeRepository;
+    private final FamilyMemberRepository familyMemberRepository;
 
     public LeaveApplicationService(
             LeaveApplicationRepository leaveApplicationRepository,
             LeaveTypeRepository leaveTypeRepository,
-            EmployeeRepository employeeRepository
+            EmployeeRepository employeeRepository,
+            FamilyMemberRepository familyMemberRepository
     ) {
         this.leaveApplicationRepository = leaveApplicationRepository;
         this.leaveTypeRepository = leaveTypeRepository;
         this.employeeRepository = employeeRepository;
+        this.familyMemberRepository = familyMemberRepository;
     }
 
-    // Mfanyakazi kuwasilisha ombi jipya la likizo
-    public LeaveApplication applyForLeave(
+    // 1. Mfanyakazi anaomba likizo
+    public LeaveApplicationResponse applyForLeave(
             Long employeeId,
             LeaveApplicationRequest request
     ) {
 
-        // 1. Hakikisha mfanyakazi yupo
+        // Hakiki mfanyakazi
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
-                                "Employee not found with ID: " + employeeId
+                                "Employee not found: " + employeeId
                         )
                 );
 
-        // 2. Hakikisha aina ya likizo ipo na iko active
+        // Hakiki aina ya likizo
         LeaveType leaveType = leaveTypeRepository
                 .findById(request.leaveTypeId())
                 .orElseThrow(() ->
                         new IllegalArgumentException(
-                                "Leave type not found with ID: "
+                                "Leave type not found: "
                                         + request.leaveTypeId()
                         )
                 );
 
         if (!leaveType.isActive()) {
             throw new IllegalArgumentException(
-                    "This leave type is not currently active"
+                    "This leave type is currently inactive"
             );
         }
 
-        // 3. Hakiki tarehe
-        if (request.startDate().isBefore(
-                java.time.LocalDate.now())) {
+        // Hakiki tarehe
+        LocalDate today = LocalDate.now();
+
+        if (request.startDate().isBefore(today)) {
             throw new IllegalArgumentException(
                     "Leave start date cannot be in the past"
             );
@@ -80,7 +87,7 @@ public class LeaveApplicationService {
             );
         }
 
-        // 4. Hesabu siku kwa kujumlisha tarehe ya kuanza na kumaliza
+        // Hesabu siku pamoja na siku ya kuanza na kumaliza
         int requestedDays = Math.toIntExact(
                 ChronoUnit.DAYS.between(
                         request.startDate(),
@@ -88,15 +95,49 @@ public class LeaveApplicationService {
                 ) + 1
         );
 
-        // 5. Hakiki idadi ya siku dhidi ya default ya aina ya likizo
         if (requestedDays > leaveType.getDefaultDays()) {
             throw new IllegalArgumentException(
-                    "Requested days exceed the default allowance of "
-                            + leaveType.getDefaultDays() + " days"
+                    "Requested days (" + requestedDays
+                            + ") exceed the allowed days ("
+                            + leaveType.getDefaultDays() + ")"
             );
         }
 
-        // 6. Tengeneza ombi
+        // Hakiki mwanafamilia kwa annual leave ya siku 28
+        boolean annualLeave28Days =
+                "ANNUAL".equalsIgnoreCase(leaveType.getCode())
+                        && requestedDays == 28;
+
+        FamilyMember familyMember = null;
+
+        if (annualLeave28Days) {
+
+            if (request.familyMemberId() == null) {
+                throw new IllegalArgumentException(
+                        "Please select a family member for annual leave of 28 days"
+                );
+            }
+
+            familyMember = familyMemberRepository
+                    .findByIdAndEmployee_Id(
+                            request.familyMemberId(),
+                            employeeId
+                    )
+                    .orElseThrow(() ->
+                            new IllegalArgumentException(
+                                    "Selected family member does not belong "
+                                            + "to this employee"
+                            )
+                    );
+
+        } else if (request.familyMemberId() != null) {
+
+            throw new IllegalArgumentException(
+                    "Family member is only accepted for annual leave of 28 days"
+            );
+        }
+
+        // Tengeneza ombi la likizo
         LeaveApplication application = new LeaveApplication();
 
         application.setEmployee(employee);
@@ -105,110 +146,170 @@ public class LeaveApplicationService {
         application.setEndDate(request.endDate());
         application.setRequestedDays(requestedDays);
         application.setReason(request.reason());
+        application.setFamilyMember(familyMember);
         application.setStatus(LeaveStatus.PENDING);
 
-        // 7. Hifadhi ombi kwenye database
-        return leaveApplicationRepository.save(application);
+        // Hifadhi ombi
+        LeaveApplication savedApplication =
+                leaveApplicationRepository.save(application);
+
+        return mapToResponse(savedApplication);
     }
 
-    // Kupata maombi ya mfanyakazi
-
-
+    // 2. Pata maombi yote ya mfanyakazi
     @Transactional(readOnly = true)
     public List<LeaveApplicationResponse> getEmployeeApplications(
             Long employeeId
     ) {
-        return leaveApplicationRepository.findByEmployeeId(employeeId)
+
+        employeeRepository.findById(employeeId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Employee not found: " + employeeId
+                        )
+                );
+
+        return leaveApplicationRepository.findAll()
                 .stream()
-                .map(application -> new LeaveApplicationResponse(
-                        application.getId(),
-                        application.getEmployee().getId(),
-                        application.getLeaveType().getId(),
-                        application.getLeaveType().getName(),
-                        application.getStartDate(),
-                        application.getEndDate(),
-                        application.getRequestedDays(),
-                        application.getReason(),
-                        application.getStatus()
-                ))
-                .toList();
+                .filter(application ->
+                        application.getEmployee()
+                                .getId()
+                                .equals(employeeId)
+                )
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 3. Pata maombi yote ya likizo
+    @Transactional(readOnly = true)
+    public List<LeaveApplicationResponse> getAllApplications() {
+
+        return leaveApplicationRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 4. Pata maombi yanayosubiri
+    @Transactional(readOnly = true)
+    public List<LeaveApplicationResponse> getPendingApplications() {
+
+        return leaveApplicationRepository.findAll()
+                .stream()
+                .filter(application ->
+                        application.getStatus() == LeaveStatus.PENDING
+                )
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 5. Pata ombi kwa ID
+    @Transactional(readOnly = true)
+    public LeaveApplicationResponse getApplicationById(Long applicationId) {
+
+        LeaveApplication application = findApplication(applicationId);
+
+        return mapToResponse(application);
     }
 
 
+    // 6. Weka ombi kwenye hatua ya kukaguliwa.
+    // Ombi lazima liwe PENDING kabla ya kuanza review.
+    public LeaveApplicationResponse markUnderReview(Long applicationId) {
 
-    // Kupata maombi yanayosubiri kuangaliwa
-    @Transactional(readOnly = true)
-    public List<LeaveApplication> getPendingApplications() {
-        return leaveApplicationRepository.findByStatus(
-                LeaveStatus.PENDING
+        LeaveApplication application = findApplication(applicationId);
+
+        if (application.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalArgumentException(
+                    "Only pending applications can be moved to review"
+            );
+        }
+
+        application.setStatus(LeaveStatus.UNDER_REVIEW);
+
+        return mapToResponse(
+                leaveApplicationRepository.save(application)
         );
     }
 
-    // Kupata ombi kwa ID
-    @Transactional(readOnly = true)
-    public LeaveApplication getApplicationById(Long applicationId) {
+    // 7. Idhinisha ombi.
+    // Admin anaweza kuidhinisha ombi la PENDING au UNDER_REVIEW.
+    public LeaveApplicationResponse approveApplication(Long applicationId) {
+
+        LeaveApplication application = findApplication(applicationId);
+
+        validateApplicationCanBeProcessed(application);
+
+        application.setStatus(LeaveStatus.APPROVED);
+
+        return mapToResponse(
+                leaveApplicationRepository.save(application)
+        );
+    }
+
+    // 8. Kataa ombi.
+    // Admin anaweza kukataa ombi la PENDING au UNDER_REVIEW.
+    public LeaveApplicationResponse rejectApplication(Long applicationId) {
+
+        LeaveApplication application = findApplication(applicationId);
+
+        validateApplicationCanBeProcessed(application);
+
+        application.setStatus(LeaveStatus.REJECTED);
+
+        return mapToResponse(
+                leaveApplicationRepository.save(application)
+        );
+    }
+
+    // 9. Hakikisha ombi linaweza kuidhinishwa au kukataliwa.
+    private void validateApplicationCanBeProcessed(
+            LeaveApplication application
+    ) {
+
+        LeaveStatus status = application.getStatus();
+
+        if (status != LeaveStatus.PENDING
+                && status != LeaveStatus.UNDER_REVIEW) {
+
+            throw new IllegalArgumentException(
+                    "Only pending or under-review applications "
+                            + "can be approved or rejected"
+            );
+        }
+    }
+
+
+    // 10. Tafuta ombi kwa ID
+    private LeaveApplication findApplication(Long applicationId) {
+
         return leaveApplicationRepository.findById(applicationId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
-                                "Leave application not found with ID: "
-                                        + applicationId
+                                "Leave application not found: " + applicationId
                         )
                 );
     }
 
-    // Kupata maombi yote ya likizo kwa ajili ya Admin
-    @Transactional(readOnly = true)
-    public List<LeaveApplication> getAllApplications() {
-        return leaveApplicationRepository.findAll();
+    // 11. Geuza Entity kuwa Response DTO
+
+    private LeaveApplicationResponse mapToResponse(
+            LeaveApplication application
+    ) {
+        return new LeaveApplicationResponse(
+                application.getId(),
+                application.getEmployee().getId(),
+                application.getLeaveType().getId(),
+                application.getLeaveType().getName(),
+                application.getStartDate(),
+                application.getEndDate(),
+                application.getRequestedDays(),
+                application.getReason(),
+                application.getStatus(),
+                application.getFamilyMember() != null
+                        ? application.getFamilyMember().getId()
+                        : null
+        );
     }
 
-    // Admin kuanza kupitia ombi
-    public LeaveApplication markUnderReview(Long applicationId) {
-
-        LeaveApplication application = getApplicationById(applicationId);
-
-        validatePendingApplication(application);
-
-        application.setStatus(LeaveStatus.UNDER_REVIEW);
-
-        return leaveApplicationRepository.save(application);
-    }
-
-    // Admin kuidhinisha ombi
-    public LeaveApplication approveApplication(Long applicationId) {
-
-        LeaveApplication application = getApplicationById(applicationId);
-
-        validatePendingApplication(application);
-
-        application.setStatus(LeaveStatus.APPROVED);
-
-        return leaveApplicationRepository.save(application);
-    }
-
-    // Admin kukataa ombi
-    public LeaveApplication rejectApplication(Long applicationId) {
-
-        LeaveApplication application = getApplicationById(applicationId);
-
-        validatePendingApplication(application);
-
-        application.setStatus(LeaveStatus.REJECTED);
-
-        return leaveApplicationRepository.save(application);
-    }
-
-    // Ruhusu kupitia, ku-approve au ku-reject maombi
-// yenye status PENDING au UNDER_REVIEW pekee.
-    private void validatePendingApplication(LeaveApplication application) {
-
-        if (application.getStatus() != LeaveStatus.PENDING
-                && application.getStatus() != LeaveStatus.UNDER_REVIEW) {
-
-            throw new IllegalStateException(
-                    "This application has already been processed. Current status: "
-                            + application.getStatus()
-            );
-        }
-    }
 }

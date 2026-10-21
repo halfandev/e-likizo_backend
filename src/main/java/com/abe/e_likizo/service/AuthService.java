@@ -38,38 +38,69 @@ public class AuthService {
     // REGISTER
     // =====================================================
 
+
     @Transactional
     public void register(RegisterRequest request) {
 
-        String email = request.getEmail().trim();
+        String checknumber = request.getChecknumber().trim();
+        String forcenumber = request.getForcenumber().trim();
 
+        String email = request.getEmail()
+                .trim()
+                .toLowerCase(java.util.Locale.ROOT);
+
+        // 1. Zuia akaunti yenye email iliyotumika tayari.
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException(
-                    "Email is already registered"
+                    "Email hii tayari ina akaunti ya login."
             );
         }
 
-        // Tafuta employee aliyepo kwa email hii.
+        // 2. Tafuta Employee kwa Check Number.
         Employee employee = employeeRepository
-                .findByEmail(email)
+                .findByChecknumber(checknumber)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "No employee record found for this email"
+                        "Check Number haijasajiliwa kwenye mfumo."
                 ));
 
-        // Zuia employee kuunganishwa na akaunti nyingine.
-        if (employee.getUser() != null) {
+        // 3. Hakikisha Force Number inalingana na Employee huyo.
+        if (!employee.getForcenumber().trim().equals(forcenumber)) {
             throw new IllegalArgumentException(
-                    "This employee is already linked to a user account"
+                    "Force Number hailingani na taarifa za mfanyakazi."
             );
         }
 
+        // 4. Hakikisha email inalingana na rekodi ya Employee.
+        if (!employee.getEmail().trim()
+                .equalsIgnoreCase(email)) {
+            throw new IllegalArgumentException(
+                    "Email hailingani na email iliyosajiliwa na Admin/HR."
+            );
+        }
+
+        // 5. Zuia Employee kuwa na akaunti zaidi ya moja.
+        if (employee.getUser() != null) {
+            throw new IllegalArgumentException(
+                    "Mfanyakazi huyu tayari ana akaunti ya login."
+            );
+        }
+
+        // 6. Tengeneza password ya muda.
         String generatedPassword =
                 passwordGeneratorService.generatePassword(10);
 
         LocalDateTime now = LocalDateTime.now();
 
+        // 7. Tengeneza akaunti ya User.
         User user = User.builder()
-                .fullName(request.getFullName())
+                .fullName(
+                        employee.getFirstname() + " "
+                                + (employee.getMiddlename() == null
+                                || employee.getMiddlename().isBlank()
+                                ? ""
+                                : employee.getMiddlename() + " ")
+                                + employee.getLastname()
+                )
                 .email(email)
                 .password(passwordEncoder.encode(generatedPassword))
                 .role(Role.EMPLOYEE)
@@ -81,11 +112,11 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Unganisha akaunti na employee.
+        // 8. Unganisha User na Employee.
         employee.setUser(savedUser);
         employeeRepository.save(employee);
 
-        // Tuma credentials baada ya kuhifadhi taarifa.
+        // 9. Tuma password ya muda kwenye email iliyothibitishwa.
         emailService.sendLoginCredentials(
                 savedUser.getEmail(),
                 savedUser.getFullName(),
@@ -136,7 +167,7 @@ public class AuthService {
         // Tafuta Employee ID kwa kutumia User ID.
         // Tafuta Employee ID kwa kutumia email ya User.
         Long employeeId = employeeRepository
-                .findByEmail(user.getEmail())
+                .findByUser_Id(user.getId())
                 .map(Employee::getId)
                 .orElse(null);
 

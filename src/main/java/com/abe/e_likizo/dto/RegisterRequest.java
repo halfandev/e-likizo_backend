@@ -1,19 +1,23 @@
+
 package com.abe.e_likizo.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class RegisterRequest {
-    @NotBlank(message = "Full name is required")
-    private String fullName;
+
+    @NotBlank(message = "Check Number is required")
+    private String checknumber;
+
+    @NotBlank(message = "Force Number is required")
+    private String forcenumber;
 
     @NotBlank(message = "Email is required")
-    @Email(message = "Please provide a valid email")
+    @Email(message = "Enter a valid email address")
     private String email;
+
+    @NotBlank(message = "Full name is required")
+    private String fullName;
 }
