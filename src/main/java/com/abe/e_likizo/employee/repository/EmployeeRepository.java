@@ -25,4 +25,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Optional<Employee> findByEmail(String email);
 
     Optional<Employee> findByUser_Email(String email);
+
+    // Pata Employee kwa kutumia ID ya User aliyeunganishwa naye
+    Optional<Employee> findByUser_Id(Long userId);
 }
