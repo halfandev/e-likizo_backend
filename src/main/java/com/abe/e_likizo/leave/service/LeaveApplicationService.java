@@ -5,6 +5,7 @@ import com.abe.e_likizo.employee.entity.Employee;
 import com.abe.e_likizo.employee.repository.EmployeeRepository;
 import com.abe.e_likizo.leave.dto.LeaveApplicationRequest;
 import com.abe.e_likizo.leave.dto.LeaveApplicationResponse;
+import com.abe.e_likizo.leave.dto.LeaveSummaryResponse;
 import com.abe.e_likizo.leave.entity.FamilyMember;
 import com.abe.e_likizo.leave.entity.LeaveApplication;
 import com.abe.e_likizo.leave.entity.LeaveType;
@@ -311,5 +312,56 @@ public class LeaveApplicationService {
                         : null
         );
     }
+
+
+    @Transactional(readOnly = true)
+    public LeaveSummaryResponse getEmployeeLeaveSummary(
+            Long employeeId
+    ) {
+        // Hakikisha mfanyakazi yupo
+        employeeRepository.findById(employeeId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Employee not found: " + employeeId
+                        )
+                );
+
+        // Jumla ya likizo zilizoidhinishwa
+        long approved =
+                leaveApplicationRepository
+                        .countByEmployee_IdAndStatus(
+                                employeeId,
+                                LeaveStatus.APPROVED
+                        );
+
+        // Jumla ya likizo zilizokataliwa
+        long rejected =
+                leaveApplicationRepository
+                        .countByEmployee_IdAndStatus(
+                                employeeId,
+                                LeaveStatus.REJECTED
+                        );
+
+        // Jumla ya maombi ambayo bado yanasubiri uamuzi.
+        // PENDING na UNDER_REVIEW zote zinahesabiwa hapa.
+        long pending =
+                leaveApplicationRepository
+                        .countByEmployee_IdAndStatus(
+                                employeeId,
+                                LeaveStatus.PENDING
+                        )
+                        + leaveApplicationRepository
+                        .countByEmployee_IdAndStatus(
+                                employeeId,
+                                LeaveStatus.UNDER_REVIEW
+                        );
+
+        return new LeaveSummaryResponse(
+                approved,
+                rejected,
+                pending
+        );
+    }
+
 
 }

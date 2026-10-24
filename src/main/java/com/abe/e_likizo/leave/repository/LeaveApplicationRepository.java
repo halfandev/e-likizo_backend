@@ -37,4 +37,9 @@ public interface LeaveApplicationRepository
             Long employeeId,
             LeaveStatus status
     );
+
+    long countByEmployee_IdAndStatus(
+            Long employeeId,
+            LeaveStatus status
+    );
 }

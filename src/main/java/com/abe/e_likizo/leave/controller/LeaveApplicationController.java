@@ -4,6 +4,7 @@ package com.abe.e_likizo.leave.controller;
 import com.abe.e_likizo.employee.service.CurrentEmployeeService;
 import com.abe.e_likizo.leave.dto.LeaveApplicationRequest;
 import com.abe.e_likizo.leave.dto.LeaveApplicationResponse;
+import com.abe.e_likizo.leave.dto.LeaveSummaryResponse;
 import com.abe.e_likizo.leave.service.LeaveApplicationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,4 +42,17 @@ public class LeaveApplicationController {
                 employeeId
         );
     }
+
+
+    @GetMapping("/my-summary")
+    public LeaveSummaryResponse getMyLeaveSummary() {
+
+        Long employeeId =
+                currentEmployeeService.getCurrentEmployeeId();
+
+        return leaveApplicationService.getEmployeeLeaveSummary(
+                employeeId
+        );
+    }
+
 }
