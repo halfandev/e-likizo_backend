@@ -33,6 +33,7 @@ import com.abe.e_likizo.entity.User;
 import com.abe.e_likizo.entity.Role;
 import com.abe.e_likizo.repository.UserRepository;
 import java.util.Objects;
+import com.abe.e_likizo.leave.dto.OcsDashboardCountsResponse;
 @Service
 @Transactional
 public class LeaveApplicationService {
@@ -683,61 +684,96 @@ public class LeaveApplicationService {
     }
 
     // 15. Employee leave summary
+    // Employee leave dashboard summary
     @Transactional(readOnly = true)
-    public LeaveSummaryResponse getEmployeeLeaveSummary(
-            Long employeeId
-    ) {
+    public LeaveSummaryResponse getEmployeeLeaveSummary(Long employeeId) {
 
-        employeeRepository.findById(employeeId)
+        // Hakikisha employee yupo
+        User currentUser = getCurrentUser();
+
+        if (currentUser.getRole() != Role.EMPLOYEE) {
+            throw new AccessDeniedException(
+                    "Dashboard hii inaruhusiwa kwa Employee pekee"
+            );
+        }
+
+        Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Employee not found: " + employeeId
                         )
                 );
 
-        // Maombi yaliyokamilika
+        if (employee.getUser() == null
+                || !Objects.equals(employee.getUser().getId(), currentUser.getId())) {
+
+            throw new AccessDeniedException(
+                    "Huna ruhusa ya kuona takwimu za Employee mwingine"
+            );
+        }
+
+        // Jumla ya maombi yote ya Employee
+        long total =
+                leaveApplicationRepository.countByEmployee_Id(employeeId);
+
+        // Maombi yaliyopo kwa OCS
+        long ocs =
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.OCS
+                );
+
+        // Maombi yaliyopo kwa OCD
+        long ocd =
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.OCD
+                );
+
+        // Maombi yaliyopo kwa RPC
+        long rpc =
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.RPC
+                );
+
+        // Maombi yaliyopo kwa CP
+        long cp =
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.CP
+                );
+
+        // Maombi yaliyopo kwa IGP
+        long igp =
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.IGP
+                );
+
+        // Maombi yaliyoidhinishwa kikamilifu
         long approved =
-                leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId,
-                                LeaveStatus.COMPLETED
-                        );
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.COMPLETED
+                );
 
         // Maombi yaliyokataliwa
         long rejected =
-                leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId,
-                                LeaveStatus.REJECTED
-                        );
-
-        // Maombi yanayoendelea
-        long pending =
-                leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId, LeaveStatus.OCS
-                        )
-                        + leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId, LeaveStatus.OCD
-                        )
-                        + leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId, LeaveStatus.RPC
-                        )
-                        + leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId, LeaveStatus.CP
-                        )
-                        + leaveApplicationRepository
-                        .countByEmployee_IdAndStatus(
-                                employeeId, LeaveStatus.IGP
-                        );
+                leaveApplicationRepository.countByEmployee_IdAndStatus(
+                        employeeId,
+                        LeaveStatus.REJECTED
+                );
 
         return new LeaveSummaryResponse(
+                total,
+                ocs,
+                ocd,
+                rpc,
+                cp,
+                igp,
                 approved,
-                rejected,
-                pending
+                rejected
         );
     }
 
@@ -1097,6 +1133,68 @@ public class LeaveApplicationService {
         return new LeaveWorkflowTrackingResponse(
                 mapToResponse(application),
                 history
+        );
+    }
+
+    // OCS Dashboard: hesabu maombi katika kila hatua ya workflow
+    @Transactional(readOnly = true)
+    public OcsDashboardCountsResponse getOCSDashboardCounts() {
+
+        User user = getCurrentUser();
+
+        // Hakikisha aliyeingia ni OCS
+        if (user.getRole() != Role.OCS) {
+            throw new AccessDeniedException(
+                    "Dashboard hii inaruhusiwa kwa OCS pekee"
+            );
+        }
+
+        // Hakikisha OCS amepangiwa Station
+        if (user.getStation() == null) {
+            throw new IllegalStateException(
+                    "OCS huyu hajapangiwa Station"
+            );
+        }
+
+        Long stationId = user.getStation().getId();
+
+        // Waiting for OCS
+        long waitingForOCS =
+                leaveApplicationRepository
+                        .countByEmployee_Station_IdAndStatus(
+                                stationId,
+                                LeaveStatus.OCS
+                        );
+
+        // Waiting for RPC
+        long waitingForRPC =
+                leaveApplicationRepository
+                        .countByEmployee_Station_IdAndStatus(
+                                stationId,
+                                LeaveStatus.RPC
+                        );
+
+        // Waiting for CP
+        long waitingForCP =
+                leaveApplicationRepository
+                        .countByEmployee_Station_IdAndStatus(
+                                stationId,
+                                LeaveStatus.CP
+                        );
+
+        // Waiting for IGP
+        long waitingForIGP =
+                leaveApplicationRepository
+                        .countByEmployee_Station_IdAndStatus(
+                                stationId,
+                                LeaveStatus.IGP
+                        );
+
+        return new OcsDashboardCountsResponse(
+                waitingForOCS,
+                waitingForRPC,
+                waitingForCP,
+                waitingForIGP
         );
     }
 }

@@ -13,6 +13,9 @@ import java.util.List;
 public interface LeaveApplicationRepository
         extends JpaRepository<LeaveApplication, Long> {
 
+    // Kuhesabu maombi yote ya mfanyakazi bila kujali status
+    long countByEmployee_Id(Long employeeId);
+
     // Maombi yote ya mfanyakazi mmoja
     List<LeaveApplication> findByEmployeeId(Long employeeId);
 
@@ -66,5 +69,10 @@ public interface LeaveApplicationRepository
             LeaveStatus status
     );
 
+    // Kuhesabu maombi ya Station kwa status maalumu
+    long countByEmployee_Station_IdAndStatus(
+            Long stationId,
+            LeaveStatus status
+    );
 
 }

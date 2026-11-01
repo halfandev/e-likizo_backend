@@ -11,6 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.abe.e_likizo.leave.service.LeaveApprovalPdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ContentDisposition;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -20,6 +26,7 @@ public class LeaveApplicationController {
 
     private final LeaveApplicationService leaveApplicationService;
     private final CurrentEmployeeService currentEmployeeService;
+    private final LeaveApprovalPdfService leaveApprovalPdfService;
 
     // Employee anaomba likizo
     @PostMapping("/apply")
@@ -202,6 +209,59 @@ public class LeaveApplicationController {
 
         return ResponseEntity.ok(
                 leaveApplicationService.getMyWorkflowHistory(applicationId)
+        );
+    }
+
+    // Employee anapakua barua ya kibali cha likizo
+    @GetMapping("/my-applications/{applicationId}/approval-letter")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<byte[]> downloadApprovalLetter(
+            @PathVariable Long applicationId
+    ) {
+
+        Long employeeId =
+                currentEmployeeService.getCurrentEmployeeId();
+
+        byte[] pdf =
+                leaveApprovalPdfService.generateApprovalLetter(
+                        applicationId,
+                        employeeId
+                );
+
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.setContentType(MediaType.APPLICATION_PDF);
+
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename(
+                                "Leave-Approval-" + applicationId + ".pdf",
+                                StandardCharsets.UTF_8
+                        )
+                        .build()
+        );
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .body(pdf);
+    }
+
+    @GetMapping("/summary/{employeeId}")
+    public ResponseEntity<LeaveSummaryResponse> getEmployeeLeaveSummary(
+            @PathVariable Long employeeId
+    ) {
+        return ResponseEntity.ok(
+                leaveApplicationService.getEmployeeLeaveSummary(employeeId)
+        );
+    }
+
+    // OCS Dashboard Counts
+    @GetMapping("/ocs/dashboard-counts")
+    public ResponseEntity<OcsDashboardCountsResponse> getOCSDashboardCounts() {
+
+        return ResponseEntity.ok(
+                leaveApplicationService.getOCSDashboardCounts()
         );
     }
 }
