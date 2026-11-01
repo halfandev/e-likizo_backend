@@ -5,5 +5,13 @@ public enum Role {
     EMPLOYEE,
     ACCOUNTANT,
     MANAGER,
-    HR
+    HR,
+
+    OCS,
+    OCD,
+    RPC,
+    CP,
+    IGP
 }
+
+

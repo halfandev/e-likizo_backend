@@ -1,15 +1,11 @@
-
 package com.abe.e_likizo.dto;
 
 import com.abe.e_likizo.entity.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
 import lombok.Data;
-import org.springframework.web.bind.annotation.CrossOrigin;
 
-@CrossOrigin
 @Data
 public class AdminCreateUserRequest {
 
@@ -22,4 +18,12 @@ public class AdminCreateUserRequest {
 
     @NotNull(message = "Role is required")
     private Role role;
+
+    private Long administrativeId;
+
+    private Long regionId;
+
+    private Long districtId;
+
+    private Long stationId;
 }

@@ -2,8 +2,10 @@
 package com.abe.e_likizo.leave.controller;
 
 import com.abe.e_likizo.leave.dto.LeaveApplicationResponse;
+import com.abe.e_likizo.leave.dto.LeaveWorkflowActionRequest;
 import com.abe.e_likizo.leave.service.LeaveApplicationService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.web.bind.annotation.*;
@@ -17,43 +19,92 @@ public class AdminLeaveApplicationController {
 
     private final LeaveApplicationService leaveApplicationService;
 
-    // Admin kuona maombi yote ya likizo
     @GetMapping
     public List<LeaveApplicationResponse> getAllApplications() {
         return leaveApplicationService.getAllApplications();
     }
 
-    // Admin kuona maombi yanayosubiri
     @GetMapping("/pending")
     public List<LeaveApplicationResponse> getPendingApplications() {
         return leaveApplicationService.getPendingApplications();
     }
 
-    // Admin kuona ombi moja
     @GetMapping("/{applicationId}")
     public LeaveApplicationResponse getApplicationById(
-            @PathVariable Long applicationId) {
+            @PathVariable Long applicationId
+    ) {
         return leaveApplicationService.getApplicationById(applicationId);
     }
 
-    // Admin kuanza kupitia ombi
-    @PatchMapping("/{applicationId}/review")
-    public LeaveApplicationResponse markUnderReview(
-            @PathVariable Long applicationId) {
-        return leaveApplicationService.markUnderReview(applicationId);
+    // OCS -> OCD
+    @PatchMapping("/{applicationId}/forward-ocs")
+    public LeaveApplicationResponse forwardFromOCSToOCD(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody LeaveWorkflowActionRequest request
+    ) {
+        return leaveApplicationService.forwardFromOCSToOCD(
+                applicationId,
+                request.comment()
+        );
     }
 
-    // Admin kuidhinisha ombi
-    @PatchMapping("/{applicationId}/approve")
-    public LeaveApplicationResponse approveApplication(
-            @PathVariable Long applicationId) {
-        return leaveApplicationService.approveApplication(applicationId);
+    // OCD -> RPC
+    @PatchMapping("/{applicationId}/forward-ocd")
+    public LeaveApplicationResponse forwardFromOCDToRPC(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody LeaveWorkflowActionRequest request
+    ) {
+        return leaveApplicationService.forwardFromOCDToRPC(
+                applicationId,
+                request.comment()
+        );
     }
 
-    // Admin kukataa ombi
+    // RPC -> CP au COMPLETED
+    @PatchMapping("/{applicationId}/process-rpc")
+    public LeaveApplicationResponse processAtRPC(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody LeaveWorkflowActionRequest request
+    ) {
+        return leaveApplicationService.processAtRPC(
+                applicationId,
+                request.comment()
+        );
+    }
+
+    // CP -> IGP
+    @PatchMapping("/{applicationId}/forward-cp")
+    public LeaveApplicationResponse forwardFromCPToIGP(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody LeaveWorkflowActionRequest request
+    ) {
+        return leaveApplicationService.forwardFromCPToIGP(
+                applicationId,
+                request.comment()
+        );
+    }
+
+    // IGP -> COMPLETED
+    @PatchMapping("/{applicationId}/approve-igp")
+    public LeaveApplicationResponse approveAtIGP(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody LeaveWorkflowActionRequest request
+    ) {
+        return leaveApplicationService.approveAtIGP(
+                applicationId,
+                request.comment()
+        );
+    }
+
+    // REJECT
     @PatchMapping("/{applicationId}/reject")
     public LeaveApplicationResponse rejectApplication(
-            @PathVariable Long applicationId) {
-        return leaveApplicationService.rejectApplication(applicationId);
+            @PathVariable Long applicationId,
+            @Valid @RequestBody LeaveWorkflowActionRequest request
+    ) {
+        return leaveApplicationService.rejectApplication(
+                applicationId,
+                request.comment()
+        );
     }
 }

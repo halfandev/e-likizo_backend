@@ -128,13 +128,15 @@ public class AuthService {
     // LOGIN
     // =====================================================
 
+
     @Transactional
     public LoginResponse login(LoginRequest request) {
 
+        String email = request.getEmail()
+                .trim()
+                .toLowerCase(java.util.Locale.ROOT);
 
-
-        String email = request.getEmail().trim();
-
+        // 1. Tafuta User kwa email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
                         new BadCredentialsException(
@@ -142,6 +144,7 @@ public class AuthService {
                         )
                 );
 
+        // 2. Hakikisha password ni sahihi
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword())) {
@@ -151,61 +154,41 @@ public class AuthService {
             );
         }
 
+        // 3. Hakikisha account imewezeshwa
         if (!user.isEnabled()) {
             throw new DisabledException(
                     "Your account has been disabled. Contact administrator."
             );
         }
 
+        // 4. Rekodi muda wa login
         LocalDateTime now = LocalDateTime.now();
 
         user.setLastLogin(now);
         user.setLastActivity(now);
         user.setUpdatedAt(now);
 
+        userRepository.save(user);
 
-        // Tafuta Employee ID kwa kutumia User ID.
-        // Tafuta Employee ID kwa kutumia email ya User.
-        Long employeeId = employeeRepository
-                .findByUser_Id(user.getId())
-                .map(Employee::getId)
-                .orElse(null);
+        // 5. Employee ID itatafutwa kwa EMPLOYEE pekee
+        Long employeeId = null;
 
-        // DEBUG: Chunguza kama User ana Employee anayehusishwa naye.
-        System.out.println("========== LOGIN DEBUG ==========");
-        System.out.println("LOGIN USER ID: " + user.getId());
-        System.out.println("LOGIN EMAIL: " + user.getEmail());
-        System.out.println("EMPLOYEE ID BY USER ID: " + employeeId);
+        if (user.getRole() == Role.EMPLOYEE) {
 
-        // Tafuta Employee kwa email ili kujua kama rekodi ipo.
-        employeeRepository.findByEmail(user.getEmail())
-                .ifPresentOrElse(
-                        employee -> {
-                            System.out.println(
-                                    "EMPLOYEE RECORD ID: " + employee.getId()
-                            );
+            employeeId = employeeRepository
+                    .findByUser_Id(user.getId())
+                    .map(Employee::getId)
+                    .orElseThrow(() ->
+                            new IllegalArgumentException(
+                                    "Employee record is not linked to this user account."
+                            )
+                    );
+        }
 
-                            System.out.println(
-                                    "EMPLOYEE EMAIL: " + employee.getEmail()
-                            );
-
-                            System.out.println(
-                                    "LINKED USER ID: "
-                                            + (employee.getUser() != null
-                                            ? employee.getUser().getId()
-                                            : null)
-                            );
-                        },
-                        () -> System.out.println(
-                                "HAKUNA EMPLOYEE MWENYE EMAIL HII"
-                        )
-                );
-
-        System.out.println("=================================");
-
+        // 6. Tengeneza JWT Token
         String token = jwtService.generateToken(user);
 
-
+        // 7. Rudisha majibu ya login
         return LoginResponse.builder()
                 .token(token)
                 .tokenType("Bearer")
@@ -217,6 +200,7 @@ public class AuthService {
                 .mustChangePassword(user.isMustChangePassword())
                 .build();
     }
+
 
 
 

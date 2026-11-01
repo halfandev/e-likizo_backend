@@ -1,4 +1,3 @@
-
 package com.abe.e_likizo.leave.repository;
 
 import com.abe.e_likizo.leave.entity.LeaveApplication;
@@ -14,32 +13,58 @@ import java.util.List;
 public interface LeaveApplicationRepository
         extends JpaRepository<LeaveApplication, Long> {
 
-    // Kupata maombi yote ya likizo ya mfanyakazi mmoja
+    // Maombi yote ya mfanyakazi mmoja
     List<LeaveApplication> findByEmployeeId(Long employeeId);
 
-    // Kupata maombi ya mfanyakazi kwa status maalumu
+    // Maombi ya mfanyakazi kwa status maalumu
     List<LeaveApplication> findByEmployeeIdAndStatus(
             Long employeeId,
             LeaveStatus status
     );
 
-    // Kupata maombi yote yenye status maalumu
+    // Maombi yote kwa status maalumu
     List<LeaveApplication> findByStatus(LeaveStatus status);
 
-    // Kupata maombi yaliyowasilishwa ndani ya kipindi cha tarehe
+    // Maombi kwa status zaidi ya moja
+    List<LeaveApplication> findByStatusIn(List<LeaveStatus> statuses);
+
+    // Maombi yaliyowasilishwa ndani ya kipindi cha tarehe
     List<LeaveApplication> findByCreatedAtBetween(
             LocalDate startDate,
             LocalDate endDate
     );
 
     // Kuhesabu maombi ya mfanyakazi kwa status maalumu
-    long countByEmployeeIdAndStatus(
-            Long employeeId,
-            LeaveStatus status
-    );
-
     long countByEmployee_IdAndStatus(
             Long employeeId,
             LeaveStatus status
     );
+
+    List<LeaveApplication> findByEmployee_Station_IdAndStatus(
+            Long stationId,
+            LeaveStatus status
+    );
+
+    List<LeaveApplication> findByEmployee_District_IdAndStatus(
+            Long districtId,
+            LeaveStatus status
+    );
+
+    List<LeaveApplication> findByEmployee_Region_IdAndStatus(
+            Long regionId,
+            LeaveStatus status
+    );
+
+    List<LeaveApplication> findByEmployee_Administrative_IdAndStatus(
+            Long administrativeId,
+            LeaveStatus status
+    );
+
+    // Kuhesabu maombi ya District kwa status maalumu
+    long countByEmployee_District_IdAndStatus(
+            Long districtId,
+            LeaveStatus status
+    );
+
+
 }

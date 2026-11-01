@@ -7,7 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
+import com.abe.e_likizo.administrative.entity.Administrative;
+import com.abe.e_likizo.administrative.entity.Region;
+import com.abe.e_likizo.administrative.entity.District;
+import com.abe.e_likizo.administrative.entity.Station;
 @Entity
 @Table(name = "users")
 @Data
@@ -30,6 +33,22 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "administrative_id")
+    private Administrative administrative;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "region_id")
+    private Region region;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "district_id")
+    private District district;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "station_id")
+    private Station station;
 
     private boolean enabled;
 

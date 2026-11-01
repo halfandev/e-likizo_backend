@@ -46,7 +46,7 @@ public class LeaveApplication extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private LeaveStatus status = LeaveStatus.PENDING;
+    private LeaveStatus status = LeaveStatus.OCS;
 
     // Mwanafamilia anayehusishwa na ombi la likizo.
 // Ni optional kwa aina nyingine za likizo.
@@ -62,3 +62,4 @@ public class LeaveApplication extends AuditableEntity {
     )
     private List<LeaveDocument> documents = new ArrayList<>();
 }
+

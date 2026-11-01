@@ -1,9 +1,12 @@
 package com.abe.e_likizo.leave.enums;
 
 public enum LeaveStatus {
-    PENDING,
-    UNDER_REVIEW,
-    APPROVED,
+    OCS,
+    OCD,
+    RPC,
+    CP,
+    IGP,
+    COMPLETED,
     REJECTED,
     CANCELLED
 }
